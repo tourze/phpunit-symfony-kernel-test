@@ -98,8 +98,11 @@ class DatabaseCleanerTest extends AbstractIntegrationTestCase
         // 不应该抛出异常
         $this->databaseCleaner->clean();
 
-        // 验证数据库连接仍然有效
-        $this->assertTrue(self::getEntityManager()->getConnection()->isConnected());
+        // Doctrine 连接是延迟建立的；在无实体映射时不会触发任何 SQL
+        // 这里显式建立连接，确保断言在 CI（无实体情况下）也成立
+        $conn = self::getEntityManager()->getConnection();
+        $conn->executeStatement('SELECT 1');
+        $this->assertTrue($conn->isConnected());
     }
 
     #[Test]
@@ -126,8 +129,10 @@ class DatabaseCleanerTest extends AbstractIntegrationTestCase
         // 再次清理应该重新分析依赖关系，验证缓存确实被清除
         $this->databaseCleaner->clean();
 
-        // 验证操作成功完成
-        $this->assertTrue(self::getEntityManager()->getConnection()->isConnected());
+        // 显式建立连接，避免在无实体映射时因未触发 SQL 导致 isConnected=false
+        $conn = self::getEntityManager()->getConnection();
+        $conn->executeStatement('SELECT 1');
+        $this->assertTrue($conn->isConnected());
     }
 
     #[Test]
@@ -155,8 +160,10 @@ class DatabaseCleanerTest extends AbstractIntegrationTestCase
         // 不应该抛出异常
         $this->databaseCleaner->clean();
 
-        // 验证清理操作成功
-        $this->assertTrue(self::getEntityManager()->getConnection()->isConnected());
+        // 显式建立连接，避免在无实体映射时因未触发 SQL 导致 isConnected=false
+        $conn = self::getEntityManager()->getConnection();
+        $conn->executeStatement('SELECT 1');
+        $this->assertTrue($conn->isConnected());
     }
 
     #[Test]
@@ -172,7 +179,9 @@ class DatabaseCleanerTest extends AbstractIntegrationTestCase
         // 不应该抛出异常
         $this->databaseCleaner->clean();
 
-        // 验证默认行为执行成功
-        $this->assertTrue(self::getEntityManager()->getConnection()->isConnected());
+        // 显式建立连接，避免在无实体映射时因未触发 SQL 导致 isConnected=false
+        $conn = self::getEntityManager()->getConnection();
+        $conn->executeStatement('SELECT 1');
+        $this->assertTrue($conn->isConnected());
     }
 }
