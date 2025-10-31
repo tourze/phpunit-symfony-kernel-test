@@ -5,6 +5,8 @@ namespace Tourze\PHPUnitSymfonyKernelTest;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Bundle\FrameworkBundle\FrameworkBundle;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
+use Symfony\Component\DependencyInjection\ContainerBuilder;
+use Symfony\Component\DependencyInjection\Definition;
 use Symfony\Component\HttpKernel\KernelInterface;
 use Symfony\Component\Security\Core\Authentication\Token\UsernamePasswordToken;
 use Symfony\Component\Security\Core\User\UserInterface;
@@ -250,12 +252,21 @@ abstract class AbstractIntegrationTestCase extends KernelTestCase
         $_ENV['DATABASE_URL'] = $_SERVER['DATABASE_URL'] = DatabaseHelper::generateUniqueDatabaseUrl();
         $_ENV['TRUSTED_PROXIES'] = $_SERVER['TRUSTED_PROXIES'] = '0.0.0.0/0';
 
-        return new Kernel(
-            environment: $options['environment'] ?? 'test',
-            debug: $options['debug'] ?? true,
-            projectDir: $projectDir,
-            appendBundles: $bundles,
-        );
+        // 使用匿名类扩展测试 Kernel，在构建容器时补充默认的 UserManagerInterface
+        return new class(environment: $options['environment'] ?? 'test', debug: $options['debug'] ?? true, projectDir: $projectDir, appendBundles: $bundles) extends Kernel {
+            protected function build(ContainerBuilder $container): void
+            {
+                parent::build($container);
+
+                // 如果没有显式提供 UserManagerInterface，则注册一个基于 InMemoryUser 的默认实现
+                $id = UserManagerInterface::class;
+                if (!$container->has($id) && !$container->hasDefinition($id) && !$container->hasAlias($id)) {
+                    $definition = new Definition(InMemoryUserManager::class);
+                    $definition->setPublic(true);
+                    $container->setDefinition($id, $definition);
+                }
+            }
+        };
     }
 
     /**
