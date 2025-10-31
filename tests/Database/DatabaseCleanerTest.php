@@ -20,10 +20,15 @@ class DatabaseCleanerTest extends AbstractIntegrationTestCase
 {
     private DatabaseCleaner $databaseCleaner;
 
+    protected function onSetUp(): void
+    {
+        $this->databaseCleaner = DatabaseCleaner::create(self::getEntityManager());
+    }
+
     #[Test]
     public function 可以创建数据库清理器实例(): void
     {
-        $cleaner = DatabaseCleaner::create($this->getEntityManagerInstance());
+        $cleaner = DatabaseCleaner::create(self::getEntityManager());
 
         $this->assertInstanceOf(DatabaseCleaner::class, $cleaner);
     }
@@ -94,7 +99,7 @@ class DatabaseCleanerTest extends AbstractIntegrationTestCase
         $this->databaseCleaner->clean();
 
         // 验证数据库连接仍然有效
-        $this->assertTrue($this->getEntityManagerInstance()->getConnection()->isConnected());
+        $this->assertTrue(self::getEntityManager()->getConnection()->isConnected());
     }
 
     #[Test]
@@ -122,7 +127,7 @@ class DatabaseCleanerTest extends AbstractIntegrationTestCase
         $this->databaseCleaner->clean();
 
         // 验证操作成功完成
-        $this->assertTrue($this->getEntityManagerInstance()->getConnection()->isConnected());
+        $this->assertTrue(self::getEntityManager()->getConnection()->isConnected());
     }
 
     #[Test]
@@ -151,7 +156,7 @@ class DatabaseCleanerTest extends AbstractIntegrationTestCase
         $this->databaseCleaner->clean();
 
         // 验证清理操作成功
-        $this->assertTrue($this->getEntityManagerInstance()->getConnection()->isConnected());
+        $this->assertTrue(self::getEntityManager()->getConnection()->isConnected());
     }
 
     #[Test]
@@ -168,11 +173,6 @@ class DatabaseCleanerTest extends AbstractIntegrationTestCase
         $this->databaseCleaner->clean();
 
         // 验证默认行为执行成功
-        $this->assertTrue($this->getEntityManagerInstance()->getConnection()->isConnected());
-    }
-
-    protected function onSetUp(): void
-    {
-        $this->databaseCleaner = DatabaseCleaner::create($this->getEntityManagerInstance());
+        $this->assertTrue(self::getEntityManager()->getConnection()->isConnected());
     }
 }

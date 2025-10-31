@@ -51,7 +51,7 @@ class DoctrineTraitTest extends AbstractIntegrationTestCase
             $this->markTestSkipped('Doctrine support is not available');
         }
 
-        $entityManager = $this->getEntityManagerInstance();
+        $entityManager = self::getEntityManager();
 
         $this->assertInstanceOf(EntityManagerInterface::class, $entityManager);
     }
@@ -66,7 +66,7 @@ class DoctrineTraitTest extends AbstractIntegrationTestCase
         $this->expectException(DoctrineSupportException::class);
         $this->expectExceptionMessage('Doctrine support is not available');
 
-        $this->getEntityManagerInstance();
+        self::getEntityManager();
     }
 
     #[Test]
@@ -80,7 +80,7 @@ class DoctrineTraitTest extends AbstractIntegrationTestCase
         self::cleanDatabase();
 
         // 验证数据库清理操作已完成（通过检查EntityManager仍然有效）
-        $entityManager = $this->getEntityManagerInstance();
+        $entityManager = self::getEntityManager();
         $this->assertInstanceOf(EntityManagerInterface::class, $entityManager);
         $this->assertTrue($entityManager->isOpen());
     }
@@ -104,8 +104,8 @@ class DoctrineTraitTest extends AbstractIntegrationTestCase
             $this->markTestSkipped('Doctrine support is not available');
         }
 
-        $em1 = $this->getEntityManagerInstance();
-        $em2 = $this->getEntityManagerInstance();
+        $em1 = self::getEntityManager();
+        $em2 = self::getEntityManager();
 
         // 两次获取的应该是同一个实例或兼容的实例
         $this->assertInstanceOf(EntityManagerInterface::class, $em1);
@@ -125,7 +125,7 @@ class DoctrineTraitTest extends AbstractIntegrationTestCase
         self::cleanDatabase();
 
         // 验证多次清理后EntityManager仍然可用
-        $entityManager = $this->getEntityManagerInstance();
+        $entityManager = self::getEntityManager();
         $this->assertInstanceOf(EntityManagerInterface::class, $entityManager);
         $this->assertTrue($entityManager->isOpen());
     }
@@ -149,7 +149,7 @@ class DoctrineTraitTest extends AbstractIntegrationTestCase
             $this->markTestSkipped('Doctrine support is not available');
         }
 
-        $entityManager = $this->getEntityManagerInstance();
+        $entityManager = self::getEntityManager();
 
         // EntityManager应该是打开状态且连接正常
         $this->assertTrue($entityManager->isOpen());

@@ -396,7 +396,7 @@ abstract class AbstractIntegrationTestCase extends KernelTestCase
     private function getEntityManagerHelper(): EntityManagerHelper
     {
         if (null === $this->entityManagerHelper) {
-            $this->entityManagerHelper = new EntityManagerHelper($this->getEntityManagerInstance());
+            $this->entityManagerHelper = new EntityManagerHelper(self::getEntityManager());
         }
 
         return $this->entityManagerHelper;
@@ -415,7 +415,7 @@ abstract class AbstractIntegrationTestCase extends KernelTestCase
             throw DoctrineSupportException::persistNotSupported();
         }
 
-        $em = $this->getEntityManagerInstance();
+        $em = self::getEntityManager();
         $em->persist($entity);
         $em->flush();
 
@@ -544,7 +544,7 @@ abstract class AbstractIntegrationTestCase extends KernelTestCase
             throw DoctrineSupportException::assertionNotSupported();
         }
 
-        $em = $this->getEntityManagerInstance();
+        $em = self::getEntityManager();
         $em->clear();
 
         $entityClass = get_class($entity);
@@ -572,7 +572,7 @@ abstract class AbstractIntegrationTestCase extends KernelTestCase
             throw DoctrineSupportException::assertionNonExistenceNotSupported();
         }
 
-        $em = $this->getEntityManagerInstance();
+        $em = self::getEntityManager();
         $em->clear();
 
         $found = $em->find($entityClass, $id);

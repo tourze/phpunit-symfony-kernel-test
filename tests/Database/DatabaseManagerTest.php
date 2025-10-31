@@ -28,7 +28,7 @@ class DatabaseManagerTest extends AbstractIntegrationTestCase
     public function 可以创建数据库管理器实例(): void
     {
         $manager = DatabaseManager::create(
-            $this->getEntityManagerInstance(),
+            self::getEntityManager(),
             $this->container,
             $this->databaseCleaner
         );
@@ -40,7 +40,7 @@ class DatabaseManagerTest extends AbstractIntegrationTestCase
     public function 可以使用静态工厂方法创建实例(): void
     {
         $manager = DatabaseManager::create(
-            $this->getEntityManagerInstance(),
+            self::getEntityManager(),
             $this->container,
             $this->databaseCleaner
         );
@@ -73,7 +73,7 @@ class DatabaseManagerTest extends AbstractIntegrationTestCase
         $this->databaseManager->execute();
 
         // 验证数据库连接仍然有效
-        $this->assertSame('1', (string) $this->getEntityManagerInstance()->getConnection()->fetchOne('SELECT 1'));
+        $this->assertSame('1', (string) self::getEntityManager()->getConnection()->fetchOne('SELECT 1'));
 
         // 验证Schema检查能正常工作
         $needsUpdate = $this->databaseManager->needsSchemaUpdate();
@@ -96,7 +96,7 @@ class DatabaseManagerTest extends AbstractIntegrationTestCase
         $this->databaseManager->execute();
 
         // 验证即使是只读模式，也不会抛出异常
-        $this->assertSame('1', (string) $this->getEntityManagerInstance()->getConnection()->fetchOne('SELECT 1'));
+        $this->assertSame('1', (string) self::getEntityManager()->getConnection()->fetchOne('SELECT 1'));
 
         // 验证Schema检查的兼容性
         $this->assertIsBool($this->databaseManager->needsSchemaUpdate());
@@ -106,7 +106,7 @@ class DatabaseManagerTest extends AbstractIntegrationTestCase
     public function 工厂方法创建的实例与构造函数创建的实例等价(): void
     {
         $factoryInstance = DatabaseManager::create(
-            $this->getEntityManagerInstance(),
+            self::getEntityManager(),
             $this->container,
             $this->databaseCleaner
         );
@@ -120,7 +120,7 @@ class DatabaseManagerTest extends AbstractIntegrationTestCase
         $this->databaseManager->execute();
 
         // 验证在没有fixtures的情况下也能正常工作
-        $this->assertSame('1', (string) $this->getEntityManagerInstance()->getConnection()->fetchOne('SELECT 1'));
+        $this->assertSame('1', (string) self::getEntityManager()->getConnection()->fetchOne('SELECT 1'));
 
         // 验证Schema管理功能仍然可用
         $this->assertIsBool($this->databaseManager->needsSchemaUpdate());
@@ -135,7 +135,7 @@ class DatabaseManagerTest extends AbstractIntegrationTestCase
         $this->databaseManager->execute();
 
         // 验证多次执行后数据库连接仍然有效
-        $this->assertSame('1', (string) $this->getEntityManagerInstance()->getConnection()->fetchOne('SELECT 1'));
+        $this->assertSame('1', (string) self::getEntityManager()->getConnection()->fetchOne('SELECT 1'));
 
         // 验证每次执行后Schema检查都能正常工作
         $this->assertIsBool($this->databaseManager->needsSchemaUpdate());
@@ -153,9 +153,9 @@ class DatabaseManagerTest extends AbstractIntegrationTestCase
     protected function onSetUp(): void
     {
         $this->container = self::getContainer();
-        $this->databaseCleaner = DatabaseCleaner::create($this->getEntityManagerInstance());
+        $this->databaseCleaner = DatabaseCleaner::create(self::getEntityManager());
         $this->databaseManager = DatabaseManager::create(
-            $this->getEntityManagerInstance(),
+            self::getEntityManager(),
             $this->container,
             $this->databaseCleaner
         );

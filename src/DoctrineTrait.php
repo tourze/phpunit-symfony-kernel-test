@@ -40,7 +40,7 @@ trait DoctrineTrait
      */
     final protected static function hasDoctrineSupport(?KernelInterface $kernel = null): bool
     {
-        $kernel = $kernel ?? self::getContainer()->get('kernel');
+        $kernel ??= self::getContainer()->get('kernel');
         /** @var KernelInterface $kernel */
         $bundles = $kernel->getBundles();
 
@@ -61,13 +61,5 @@ trait DoctrineTrait
 
         // TODO 对于 Repository 测试，这里应该返回的是 Repository 对应的 EM
         return self::getService(EntityManagerInterface::class);
-    }
-
-    /**
-     * 获取 EntityManager 实例（实例方法包装器）
-     */
-    final protected function getEntityManagerInstance(): EntityManagerInterface
-    {
-        return static::getEntityManager();
     }
 }
