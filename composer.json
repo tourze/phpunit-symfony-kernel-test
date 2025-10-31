@@ -31,6 +31,9 @@
     "symfony/http-kernel": "^7.3",
     "tourze/phpunit-base": "1.*"
   },
+  "suggest": {
+    "tourze/biz-user-bundle": "需要持久化用户实体时安装（createAdminUser/createNormalUser 将自动启用实体模式）"
+  },
   "autoload": {
     "psr-4": {
       "Tourze\\PHPUnitSymfonyKernelTest\\": "src/"
@@ -40,8 +43,5 @@
     "psr-4": {
       "Tourze\\PHPUnitSymfonyKernelTest\\Tests\\": "tests/"
     }
-  },
-  "suggest": {
-    "tourze/biz-user-bundle": "需要持久化用户实体时安装（createAdminUser/createNormalUser 将自动启用实体模式）"
   }
 }
