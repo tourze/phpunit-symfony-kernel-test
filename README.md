@@ -1,1 +1,0 @@
-# phpunit-symfony-kernel-test
