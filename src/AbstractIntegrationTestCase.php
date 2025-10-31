@@ -2,22 +2,18 @@
 
 namespace Tourze\PHPUnitSymfonyKernelTest;
 
-use BizUserBundle\Entity\BizUser;
-use Doctrine\ORM\EntityManagerInterface;
-use PHPUnit\Framework\Attributes\RunTestsInSeparateProcesses;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Bundle\FrameworkBundle\FrameworkBundle;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\HttpKernel\KernelInterface;
-use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 use Symfony\Component\Security\Core\Authentication\Token\UsernamePasswordToken;
 use Symfony\Component\Security\Core\User\UserInterface;
 use SymfonyTestingFramework\Kernel;
-use Tourze\BizRoleBundle\Repository\BizRoleRepository;
 use Tourze\BundleDependency\ResolveHelper;
 use Tourze\DoctrineResolveTargetEntityBundle\Testing\TestEntityGenerator;
 use Tourze\PHPUnitBase\TestHelper;
 use Tourze\PHPUnitSymfonyKernelTest\Exception\DoctrineSupportException;
+use Tourze\UserServiceContracts\UserManagerInterface;
 
 /**
  * 集成测试基类
@@ -593,58 +589,42 @@ abstract class AbstractIntegrationTestCase extends KernelTestCase
      */
     protected function createAdminUser(string $username = 'admin', string $password = 'password'): UserInterface
     {
-        return $this->findOrCreateBizUser($username, $password, ['ROLE_ADMIN']);
+        return $this->findOrCreateUser($username, $password, ['ROLE_ADMIN']);
     }
 
     /**
-     * 查找或创建 BizUser 实体
+     * 查找或创建用户实体
      *
      * @param array<string> $roles
      */
-    private function findOrCreateBizUser(string $username, string $password, array $roles): BizUser
+    private function findOrCreateUser(string $username, string $password, array $roles): UserInterface
     {
-        $em = $this->getEntityManagerInstance();
-
         // 尝试查找已存在的用户
-        $user = $em->getRepository(BizUser::class)->findOneBy(['username' => $username]);
+        $user = self::getService(UserManagerInterface::class)->loadUserByIdentifier($username);
 
         if (!$user) {
-            $user = $this->createBizUser($username, $password, $roles);
+            $user = $this->createUser($username, $password, $roles);
         }
 
         return $user;
     }
 
     /**
-     * 创建 BizUser 实体
+     * 创建用户实体
      *
      * @param array<string> $roles
      */
-    private function createBizUser(string $username, string $password, array $roles): BizUser
+    final protected function createUser(string $username, string $password, array $roles): UserInterface
     {
-        $user = new BizUser();
-        $user->setUsername($username);
-        $user->setValid(true);
-
-        // 设置密码
-        $passwordHasher = self::getService(UserPasswordHasherInterface::class);
-        assert($passwordHasher instanceof UserPasswordHasherInterface);
-        $user->setPasswordHash($passwordHasher->hashPassword($user, $password));
-
-        $roleRepository = self::getService(BizRoleRepository::class);
-        assert($roleRepository instanceof BizRoleRepository);
-
-        foreach ($roles as $role) {
-            $user->addAssignRole($roleRepository->findOrCreate($role));
-        }
-
-        // 如果用户名是邮箱格式，也设置邮箱
-        if (filter_var($username, FILTER_VALIDATE_EMAIL)) {
-            $user->setEmail($username);
-        }
+        $user = self::getService(UserManagerInterface::class)->createUser(
+            userIdentifier: $username,
+            password: $password,
+            roles: $roles,
+        );
 
         // 保存用户
-        return $this->persistAndFlush($user);
+        $this->persistAndFlush($user);
+        return $user;
     }
 
     /**
@@ -652,7 +632,7 @@ abstract class AbstractIntegrationTestCase extends KernelTestCase
      */
     protected function createNormalUser(string $username = 'user', string $password = 'password'): UserInterface
     {
-        return $this->findOrCreateBizUser($username, $password, ['ROLE_USER']);
+        return $this->findOrCreateUser($username, $password, ['ROLE_USER']);
     }
 
     /**
@@ -662,17 +642,7 @@ abstract class AbstractIntegrationTestCase extends KernelTestCase
      */
     protected function createUserWithRoles(array $roles, string $username = 'test', string $password = 'password'): UserInterface
     {
-        return $this->findOrCreateBizUser($username, $password, $roles);
-    }
-
-    /**
-     * 创建用户（别名方法，保持与 AuthenticationTestTrait 的兼容性）
-     *
-     * @param array<string> $roles
-     */
-    protected function createUser(string $username, string $password, array $roles): UserInterface
-    {
-        return $this->createBizUser($username, $password, $roles);
+        return $this->findOrCreateUser($username, $password, $roles);
     }
 
     /**

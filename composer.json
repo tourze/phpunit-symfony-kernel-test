@@ -19,10 +19,9 @@
     "symfony/framework-bundle": "^7.3",
     "symfony/security-core": "^7.3",
     "symfony/yaml": "^7.3",
-    "tourze/biz-user-bundle": "0.0.*",
     "tourze/bundle-dependency": "1.*",
     "tourze/doctrine-resolve-target-entity-bundle": "0.0.*",
-    "tourze/enum-extra": "0.1.*",
+    "tourze/enum-extra": "1.*",
     "tourze/symfony-testing-framework": "0.0.*"
   },
   "require-dev": {
@@ -41,7 +40,7 @@
       "Tourze\\PHPUnitSymfonyKernelTest\\Tests\\": "tests/"
     }
   },
-  "extra": {
-    "release-version": "0.1.*"
+  "suggest": {
+    "tourze/biz-user-bundle": "需要持久化用户实体时安装（createAdminUser/createNormalUser 将自动启用实体模式）"
   }
 }
