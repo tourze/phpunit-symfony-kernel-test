@@ -20,7 +20,7 @@
     "symfony/security-core": "^7.3",
     "symfony/yaml": "^7.3",
     "tourze/bundle-dependency": "1.*",
-    "tourze/doctrine-resolve-target-entity-bundle": "0.0.*",
+    "tourze/doctrine-resolve-target-entity-bundle": "1.*",
     "tourze/enum-extra": "1.*",
     "tourze/symfony-testing-framework": "0.0.*"
   },
