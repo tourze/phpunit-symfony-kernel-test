@@ -9,6 +9,7 @@ use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Definition;
 use Symfony\Component\HttpKernel\KernelInterface;
 use Symfony\Component\Security\Core\Authentication\Token\UsernamePasswordToken;
+use Symfony\Component\Security\Core\User\InMemoryUser;
 use Symfony\Component\Security\Core\User\UserInterface;
 use SymfonyTestingFramework\Kernel;
 use Tourze\BundleDependency\ResolveHelper;
@@ -632,6 +633,9 @@ abstract class AbstractIntegrationTestCase extends KernelTestCase
             password: $password,
             roles: $roles,
         );
+        if ($user instanceof InMemoryUser) {
+            return $user;
+        }
 
         // 保存用户
         $this->persistAndFlush($user);
