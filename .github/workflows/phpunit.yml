@@ -15,8 +15,27 @@ jobs:
         perfer:
           - stable
     steps:
-      - uses: actions/checkout@master
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP ${{ matrix.php_version }}
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php_version }}
+          extensions: pdo_sqlite, sqlite3
+          coverage: none
+          tools: composer:v2
+
+      - name: Validate composer.json
+        run: composer validate --no-check-publish
+
       - name: Install Dependencies
         run: composer update --prefer-dist --no-interaction --no-suggest --prefer-${{ matrix.perfer }}
+
+      - name: Show PHP info (debug)
+        run: |
+          php -v
+          php -m
+          composer --version
+
       - name: Run PHPUnit
         run: ./vendor/bin/phpunit tests
