@@ -8,9 +8,11 @@
     "composer-runtime-api": "^2.0",
     "doctrine/collections": "^2.3",
     "doctrine/data-fixtures": "^2.0",
+    "doctrine/dbal": "^4.0",
     "doctrine/doctrine-bundle": "^2.13",
     "doctrine/doctrine-fixtures-bundle": "^4.0",
     "doctrine/orm": "^3.0",
+    "doctrine/persistence": "^4.1",
     "symfony/console": "^7.3",
     "symfony/dependency-injection": "^7.3",
     "symfony/doctrine-bridge": "^7.3",
@@ -20,16 +22,13 @@
     "tourze/biz-user-bundle": "0.0.*",
     "tourze/bundle-dependency": "1.*",
     "tourze/doctrine-resolve-target-entity-bundle": "0.0.*",
+    "tourze/enum-extra": "0.1.*",
     "tourze/symfony-testing-framework": "0.0.*"
   },
   "require-dev": {
-    "doctrine/dbal": "^4.0",
-    "doctrine/persistence": "^4.1",
     "phpstan/phpstan": "^2.1",
     "phpunit/phpunit": "^11.5",
-    "symfony/dependency-injection": "^7.3",
     "symfony/http-kernel": "^7.3",
-    "tourze/enum-extra": "0.1.*",
     "tourze/phpunit-base": "1.*"
   },
   "autoload": {
