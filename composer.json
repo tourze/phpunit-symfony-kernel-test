@@ -1,6 +1,6 @@
 {
   "name": "tourze/phpunit-symfony-kernel-test",
-  "description": "",
+  "description": "PHPUnit测试集合，为Symfony内核调整准备",
   "type": "library",
   "homepage": "https://github.com/tourze/phpunit-symfony-kernel-test",
   "license": "MIT",
