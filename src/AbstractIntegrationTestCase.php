@@ -3,6 +3,7 @@
 namespace Tourze\PHPUnitSymfonyKernelTest;
 
 use PHPUnit\Framework\Attributes\Test;
+use Symfony\Bridge\Doctrine\Security\User\UserLoaderInterface;
 use Symfony\Bundle\FrameworkBundle\FrameworkBundle;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
@@ -259,12 +260,18 @@ abstract class AbstractIntegrationTestCase extends KernelTestCase
             {
                 parent::build($container);
 
+                $definition = new Definition(InMemoryUserManager::class);
+                $definition->setPublic(true);
+                $container->setDefinition(InMemoryUserManager::class, $definition);
+
                 // 如果没有显式提供 UserManagerInterface，则注册一个基于 InMemoryUser 的默认实现
                 $id = UserManagerInterface::class;
                 if (!$container->has($id) && !$container->hasDefinition($id) && !$container->hasAlias($id)) {
-                    $definition = new Definition(InMemoryUserManager::class);
-                    $definition->setPublic(true);
-                    $container->setDefinition($id, $definition);
+                    $container->setAlias(UserManagerInterface::class, InMemoryUserManager::class);
+                }
+                $id = UserLoaderInterface::class;
+                if (!$container->has($id) && !$container->hasDefinition($id) && !$container->hasAlias($id)) {
+                    $container->setAlias(UserLoaderInterface::class, InMemoryUserManager::class);
                 }
             }
         };
