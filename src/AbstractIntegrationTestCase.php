@@ -8,6 +8,8 @@ use Symfony\Bundle\FrameworkBundle\FrameworkBundle;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Definition;
+use Symfony\Component\DependencyInjection\Reference;
+use Symfony\Component\Finder\Finder;
 use Symfony\Component\HttpKernel\KernelInterface;
 use Symfony\Component\Security\Core\Authentication\Token\UsernamePasswordToken;
 use Symfony\Component\Security\Core\User\InMemoryUser;
@@ -240,7 +242,8 @@ abstract class AbstractIntegrationTestCase extends KernelTestCase
         $entityGenerator = new TestEntityGenerator($projectDir);
         $entityMappings[$entityGenerator->getNamespace()] = $projectDir;
 
-        // $resolveTargetInterfaces = EntityScanner::scanInterfaces($entityMappings);
+        // 扫描实体中使用的接口并自动生成测试实体
+        $resolveTargetInterfaces = static::scanEntityInterfaces($entityMappings);
 
         DatabaseHelper::configureCacheContext(
             $projectDir,
@@ -255,12 +258,102 @@ abstract class AbstractIntegrationTestCase extends KernelTestCase
         $_ENV['TRUSTED_PROXIES'] = $_SERVER['TRUSTED_PROXIES'] = '0.0.0.0/0';
 
         // 使用匿名类扩展测试 Kernel，在构建容器时补充默认的 UserManagerInterface
-        return new class(environment: $options['environment'] ?? 'test', debug: $options['debug'] ?? true, projectDir: $projectDir, appendBundles: $bundles) extends Kernel {
+        return new class(
+            environment: $options['environment'] ?? 'test',
+            debug: $options['debug'] ?? true,
+            projectDir: $projectDir,
+            appendBundles: $bundles,
+            entityGenerator: $entityGenerator,
+            interfaces: $resolveTargetInterfaces
+        ) extends Kernel {
+            public function __construct(
+                string $environment,
+                bool $debug,
+                string $projectDir,
+                array $appendBundles,
+                private readonly TestEntityGenerator $entityGenerator,
+                private readonly array $interfaces,
+            ) {
+                parent::__construct($environment, $debug, $projectDir, $appendBundles);
+            }
+
             protected function build(ContainerBuilder $container): void
             {
                 parent::build($container);
 
-                $definition = new Definition(InMemoryUserManager::class);
+                // 配置 Doctrine 映射生成的实体命名空间
+                if ($container->hasExtension('doctrine')) {
+                    // 确保 test_entities 目录存在（Doctrine 要求映射目录必须存在）
+                    $testEntitiesDir = $this->getProjectDir() . '/test_entities';
+                    if (!is_dir($testEntitiesDir)) {
+                        mkdir($testEntitiesDir, 0o777, true);
+                    }
+
+                    $container->prependExtensionConfig('doctrine', [
+                        'orm' => [
+                            'mappings' => [
+                                'DoctrineResolveTargetForTest' => [
+                                    'type' => 'attribute',
+                                    'dir' => $testEntitiesDir,
+                                    'prefix' => $this->entityGenerator->getNamespace(),
+                                    'is_bundle' => false,
+                                ],
+                            ],
+                        ],
+                    ]);
+                }
+
+                // 为所有扫描到的接口生成测试实体并配置映射
+                $userEntityClass = null; // 记录 UserInterface 对应的实体类
+                $resolveTargets = [];
+                foreach ($this->interfaces as $interface) {
+                    try {
+                        // 生成测试实体
+                        $entityClass = $this->entityGenerator->generateTestEntity($interface);
+
+                        // 立即加载生成的类文件（确保可以被实例化）
+                        $classFile = $this->getProjectDir() . '/test_entities/' . basename(str_replace('\\', '/', $entityClass)) . '.php';
+                        if (file_exists($classFile)) {
+                            require_once $classFile;
+                        }
+                        // 收集 ResolveTargetEntity 映射，稍后一次性注入 doctrine 配置
+                        $resolveTargets[$interface] = $entityClass;
+
+                        // 检查是否是 UserInterface 映射
+                        if ('Symfony\Component\Security\Core\User\UserInterface' === $interface) {
+                            $userEntityClass = $entityClass;
+                        }
+                    } catch (\Exception $e) {
+                        // 记录错误但不中断测试
+                        error_log(sprintf(
+                            'Failed to generate test entity for interface %s: %s',
+                            $interface,
+                            $e->getMessage()
+                        ));
+                    }
+                }
+
+                // 以 doctrine 预置配置注入 resolve_target_entities，确保在元数据加载前生效
+                if ($container->hasExtension('doctrine') && !empty($resolveTargets)) {
+                    $container->prependExtensionConfig('doctrine', [
+                        'orm' => [
+                            'resolve_target_entities' => $resolveTargets,
+                        ],
+                    ]);
+                }
+
+                // 根据是否有 UserInterface 映射，选择合适的 UserManager
+                if (null !== $userEntityClass) {
+                    // 使用 TestEntityUserManager（支持 Doctrine 实体）
+                    $definition = new Definition(TestEntityUserManager::class, [
+                        new Reference('doctrine.orm.entity_manager'),
+                        $userEntityClass,
+                    ]);
+                } else {
+                    // 回退到 InMemoryUserManager
+                    $definition = new Definition(InMemoryUserManager::class);
+                }
+
                 $definition->setPublic(true);
                 $container->setDefinition(InMemoryUserManager::class, $definition);
 
@@ -272,6 +365,26 @@ abstract class AbstractIntegrationTestCase extends KernelTestCase
                 $id = UserLoaderInterface::class;
                 if (!$container->has($id) && !$container->hasDefinition($id) && !$container->hasAlias($id)) {
                     $container->setAlias(UserLoaderInterface::class, InMemoryUserManager::class);
+                }
+
+                // 配置 Symfony Security UserProvider（仅当检测到 UserInterface 映射时）
+                if (null !== $userEntityClass && $container->hasExtension('security')) {
+                    // 注册 TestEntityUserProvider 服务
+                    $userProviderDefinition = new Definition(TestEntityUserProvider::class, [
+                        new Reference(InMemoryUserManager::class),
+                        $userEntityClass,
+                    ]);
+                    $userProviderDefinition->setPublic(true);
+                    $container->setDefinition('test_entity_user_provider', $userProviderDefinition);
+
+                    // 在 Security 配置中声明该 provider
+                    $container->prependExtensionConfig('security', [
+                        'providers' => [
+                            'test_entity_user_provider' => [
+                                'id' => 'test_entity_user_provider',
+                            ],
+                        ],
+                    ]);
                 }
             }
         };
@@ -709,6 +822,94 @@ abstract class AbstractIntegrationTestCase extends KernelTestCase
         /** @var \Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface $tokenStorage */
         $tokenStorage = self::getServiceById('security.token_storage');
         $tokenStorage->setToken($token);
+    }
+
+    /**
+     * 扫描实体文件中使用的 targetEntity 接口
+     *
+     * @param array<string, string> $entityMappings 命名空间 => 目录路径
+     * @return array<string> 接口类名列表
+     */
+    public static function scanEntityInterfaces(array $entityMappings): array
+    {
+        $interfaces = [];
+
+        foreach ($entityMappings as $namespace => $path) {
+            if (!is_dir($path)) {
+                continue;
+            }
+
+            $finder = new Finder();
+            $finder->files()->in($path)->name('*.php');
+
+            foreach ($finder as $file) {
+                $content = file_get_contents($file->getRealPath());
+                if (false === $content) {
+                    continue;
+                }
+
+                // 匹配所有 Doctrine 关系注解中的 targetEntity
+                $patterns = [
+                    // 匹配 Attribute 风格: #[ORM\ManyToOne(targetEntity: Interface::class)]
+                    '/#\[ORM\\\\(?:ManyToOne|OneToMany|OneToOne|ManyToMany)\([^)]*targetEntity:\s*([^:,\s\)]+)::class/i',
+                    // 匹配旧注解风格: @ORM\ManyToOne(targetEntity="Interface")
+                    '/@ORM\\\\(?:ManyToOne|OneToMany|OneToOne|ManyToMany)\([^)]*targetEntity\s*=\s*"?([^",\s\)]+)"?/i',
+                ];
+
+                foreach ($patterns as $pattern) {
+                    if (preg_match_all($pattern, $content, $matches)) {
+                        foreach ($matches[1] as $className) {
+                            $fullClassName = static::resolveClassName($className, $content);
+
+                            // 只处理接口类型
+                            if (null !== $fullClassName && interface_exists($fullClassName)) {
+                                $interfaces[] = $fullClassName;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        return array_unique($interfaces);
+    }
+
+    /**
+     * 解析类名为完全限定名
+     */
+    public static function resolveClassName(string $shortName, string $fileContent): ?string
+    {
+        // 去掉可能的反斜杠和引号
+        $shortName = trim($shortName, '\\"\'');
+
+        // 如果已经是完全限定名
+        if (str_contains($shortName, '\\')) {
+            $fullName = ltrim($shortName, '\\');
+
+            return class_exists($fullName) || interface_exists($fullName) ? $fullName : null;
+        }
+
+        // 查找 use 语句
+        $usePattern = '/use\s+([^;]+\\\\' . preg_quote($shortName, '/') . ')\s*;/';
+        if (preg_match($usePattern, $fileContent, $matches)) {
+            return $matches[1];
+        }
+
+        // 检查是否在当前命名空间
+        if (preg_match('/namespace\s+([^;]+);/', $fileContent, $matches)) {
+            $namespace = $matches[1];
+            $possibleClassName = $namespace . '\\' . $shortName;
+            if (class_exists($possibleClassName) || interface_exists($possibleClassName)) {
+                return $possibleClassName;
+            }
+        }
+
+        // 尝试全局命名空间
+        if (class_exists($shortName) || interface_exists($shortName)) {
+            return $shortName;
+        }
+
+        return null;
     }
 
     /**
