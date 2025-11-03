@@ -45,7 +45,7 @@ abstract class AbstractRepositoryTestCase extends AbstractIntegrationTestCase
      * 确保测试用例保存的总是符合预期的对象
      */
     #[Test]
-    final public function testCreateNewEntityShouldNotBePersisted(): object
+    final public function testCreateNewEntityShouldNotBePersisted(): void
     {
         $entity = $this->createNewEntity();
         $this->assertInstanceOf($this->getRepository()->getClassName(), $entity);
@@ -53,8 +53,6 @@ abstract class AbstractRepositoryTestCase extends AbstractIntegrationTestCase
             $this->getEntityManager()->getUnitOfWork()->isInIdentityMap($entity),
             'createNewEntity方法返回的对象，不应该存储到 EntityManager UnitOfWork，实现方只需要确保有创建对象并确保字段完整、不会有冲突即可'
         );
-
-        return $entity;
     }
 
     /**
