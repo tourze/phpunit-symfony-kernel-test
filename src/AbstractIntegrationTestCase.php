@@ -328,7 +328,7 @@ abstract class AbstractIntegrationTestCase extends KernelTestCase
                         error_log(sprintf(
                             'Failed to generate test entity for interface %s: %s',
                             $interface,
-                            $e->getMessage()
+                            $e,
                         ));
                     }
                 }
