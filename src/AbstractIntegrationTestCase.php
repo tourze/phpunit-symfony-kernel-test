@@ -2,6 +2,7 @@
 
 namespace Tourze\PHPUnitSymfonyKernelTest;
 
+use PHPUnit\Framework\Attributes\RunTestsInSeparateProcesses;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Bridge\Doctrine\Security\User\UserLoaderInterface;
 use Symfony\Bundle\FrameworkBundle\FrameworkBundle;
@@ -11,6 +12,7 @@ use Symfony\Component\DependencyInjection\Definition;
 use Symfony\Component\DependencyInjection\Reference;
 use Symfony\Component\Finder\Finder;
 use Symfony\Component\HttpKernel\KernelInterface;
+use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface;
 use Symfony\Component\Security\Core\Authentication\Token\UsernamePasswordToken;
 use Symfony\Component\Security\Core\User\InMemoryUser;
 use Symfony\Component\Security\Core\User\UserInterface;
@@ -100,7 +102,7 @@ abstract class AbstractIntegrationTestCase extends KernelTestCase
 
         // 解析.env.test文件
         $envContent = file_get_contents($envTestFile);
-        if ($envContent !== false && preg_match('/^KERNEL_CLASS=(.+)$/m', $envContent, $matches)) {
+        if (false !== $envContent && preg_match('/^KERNEL_CLASS=(.+)$/m', $envContent, $matches)) {
             $kernelClass = trim($matches[1], '"\'');
 
             // 如果是相对类名，添加项目命名空间
@@ -108,7 +110,7 @@ abstract class AbstractIntegrationTestCase extends KernelTestCase
                 $composerFile = $projectDir . '/composer.json';
                 if (file_exists($composerFile)) {
                     $composerContent = file_get_contents($composerFile);
-                    if ($composerContent !== false) {
+                    if (false !== $composerContent) {
                         $composer = json_decode($composerContent, true);
                         if (isset($composer['autoload']['psr-4']) && is_array($composer['autoload']['psr-4'])) {
                             $namespace = array_key_first($composer['autoload']['psr-4']);
@@ -160,7 +162,7 @@ abstract class AbstractIntegrationTestCase extends KernelTestCase
             $line = trim($line);
 
             // 跳过注释行
-            if (str_starts_with($line, '#') || $line === '') {
+            if (str_starts_with($line, '#') || '' === $line) {
                 continue;
             }
 
@@ -258,14 +260,7 @@ abstract class AbstractIntegrationTestCase extends KernelTestCase
         $_ENV['TRUSTED_PROXIES'] = $_SERVER['TRUSTED_PROXIES'] = '0.0.0.0/0';
 
         // 使用匿名类扩展测试 Kernel，在构建容器时补充默认的 UserManagerInterface
-        return new class(
-            environment: $options['environment'] ?? 'test',
-            debug: $options['debug'] ?? true,
-            projectDir: $projectDir,
-            appendBundles: $bundles,
-            entityGenerator: $entityGenerator,
-            interfaces: $resolveTargetInterfaces
-        ) extends Kernel {
+        return new class(environment: $options['environment'] ?? 'test', debug: $options['debug'] ?? true, projectDir: $projectDir, appendBundles: $bundles, entityGenerator: $entityGenerator, interfaces: $resolveTargetInterfaces) extends Kernel {
             public function __construct(
                 string $environment,
                 bool $debug,
@@ -319,10 +314,6 @@ abstract class AbstractIntegrationTestCase extends KernelTestCase
                         // 收集 ResolveTargetEntity 映射，稍后一次性注入 doctrine 配置
                         $resolveTargets[$interface] = $entityClass;
 
-                        // 检查是否是 UserInterface 映射
-                        if ('Symfony\Component\Security\Core\User\UserInterface' === $interface) {
-                            $userEntityClass = $entityClass;
-                        }
                     } catch (\Exception $e) {
                         // 记录错误但不中断测试
                         error_log(sprintf(
@@ -409,7 +400,7 @@ abstract class AbstractIntegrationTestCase extends KernelTestCase
 
             $reflection = new \ReflectionClass($bundle);
             $fileName = $reflection->getFileName();
-            if ($fileName !== false) {
+            if (false !== $fileName) {
                 $entityPath = dirname($fileName) . '/Entity';
             } else {
                 $entityPath = '';
@@ -759,6 +750,7 @@ abstract class AbstractIntegrationTestCase extends KernelTestCase
 
         // 保存用户
         $this->persistAndFlush($user);
+
         return $user;
     }
 
@@ -787,7 +779,7 @@ abstract class AbstractIntegrationTestCase extends KernelTestCase
      */
     protected function getAuthenticatedUser(): ?UserInterface
     {
-        /** @var \Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface $security */
+        /** @var TokenStorageInterface $security */
         $security = self::getServiceById('security.token_storage');
         $token = $security->getToken();
 
@@ -812,14 +804,14 @@ abstract class AbstractIntegrationTestCase extends KernelTestCase
         );
 
         if (self::getContainer()->has('security.untracked_token_storage')) {
-            /** @var \Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface $untrackedTokenStorage */
+            /** @var TokenStorageInterface $untrackedTokenStorage */
             $untrackedTokenStorage = self::getContainer()->get('security.untracked_token_storage');
             $untrackedTokenStorage->setToken($token);
 
             return;
         }
 
-        /** @var \Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface $tokenStorage */
+        /** @var TokenStorageInterface $tokenStorage */
         $tokenStorage = self::getServiceById('security.token_storage');
         $tokenStorage->setToken($token);
     }
@@ -851,9 +843,9 @@ abstract class AbstractIntegrationTestCase extends KernelTestCase
                 // 匹配所有 Doctrine 关系注解中的 targetEntity
                 $patterns = [
                     // 匹配 Attribute 风格: #[ORM\ManyToOne(targetEntity: Interface::class)]
-                    '/#\[ORM\\\\(?:ManyToOne|OneToMany|OneToOne|ManyToMany)\([^)]*targetEntity:\s*([^:,\s\)]+)::class/i',
+                    '/#\[ORM\\\(?:ManyToOne|OneToMany|OneToOne|ManyToMany)\([^)]*targetEntity:\s*([^:,\s\)]+)::class/i',
                     // 匹配旧注解风格: @ORM\ManyToOne(targetEntity="Interface")
-                    '/@ORM\\\\(?:ManyToOne|OneToMany|OneToOne|ManyToMany)\([^)]*targetEntity\s*=\s*"?([^",\s\)]+)"?/i',
+                    '/@ORM\\\(?:ManyToOne|OneToMany|OneToOne|ManyToMany)\([^)]*targetEntity\s*=\s*"?([^",\s\)]+)"?/i',
                 ];
 
                 foreach ($patterns as $pattern) {
@@ -880,7 +872,7 @@ abstract class AbstractIntegrationTestCase extends KernelTestCase
     public static function resolveClassName(string $shortName, string $fileContent): ?string
     {
         // 去掉可能的反斜杠和引号
-        $shortName = trim($shortName, '\\"\'');
+        $shortName = trim($shortName, '\"\'');
 
         // 如果已经是完全限定名
         if (str_contains($shortName, '\\')) {
@@ -919,7 +911,7 @@ abstract class AbstractIntegrationTestCase extends KernelTestCase
     final public function testShouldHaveRunTestsInSeparateProcesses(): void
     {
         $reflection = new \ReflectionClass(static::class);
-        $attributes = $reflection->getAttributes(\PHPUnit\Framework\Attributes\RunTestsInSeparateProcesses::class);
+        $attributes = $reflection->getAttributes(RunTestsInSeparateProcesses::class);
         $this->assertNotEmpty($attributes, static::class . ' 这个测试用例，应使用 RunTestsInSeparateProcesses 注解');
     }
 }
