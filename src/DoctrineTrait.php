@@ -21,10 +21,12 @@ trait DoctrineTrait
             return;
         }
 
+        $em = self::getEntityManager();
+
         $manager = new DatabaseManager(
-            self::getEntityManager(),
+            $em,
             self::getContainer(),
-            new DatabaseCleaner(self::getEntityManager())
+            new DatabaseCleaner($em),
         );
 
         try {

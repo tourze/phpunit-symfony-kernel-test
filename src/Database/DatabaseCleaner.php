@@ -120,6 +120,8 @@ class DatabaseCleaner
      */
     public function clean(): void
     {
+        $this->entityManager->clear();
+
         match ($this->strategy) {
             self::STRATEGY_DELETE => $this->cleanWithDelete(),
             self::STRATEGY_TRUNCATE => $this->cleanWithTruncate(),
