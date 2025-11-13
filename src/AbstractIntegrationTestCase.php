@@ -314,6 +314,10 @@ abstract class AbstractIntegrationTestCase extends KernelTestCase
                         // 收集 ResolveTargetEntity 映射，稍后一次性注入 doctrine 配置
                         $resolveTargets[$interface] = $entityClass;
 
+                        // 检查是否是 UserInterface 映射
+                        if ('Symfony\Component\Security\Core\User\UserInterface' === $interface) {
+                            $userEntityClass = $entityClass;
+                        }
                     } catch (\Exception $e) {
                         // 记录错误但不中断测试
                         error_log(sprintf(
@@ -334,35 +338,37 @@ abstract class AbstractIntegrationTestCase extends KernelTestCase
                 }
 
                 // 根据是否有 UserInterface 映射，选择合适的 UserManager
+                $userManagerServiceId = InMemoryUserManager::class;
                 if (null !== $userEntityClass) {
                     // 使用 TestEntityUserManager（支持 Doctrine 实体）
                     $definition = new Definition(TestEntityUserManager::class, [
                         new Reference('doctrine.orm.entity_manager'),
                         $userEntityClass,
                     ]);
+                    $userManagerServiceId = TestEntityUserManager::class;
                 } else {
                     // 回退到 InMemoryUserManager
                     $definition = new Definition(InMemoryUserManager::class);
                 }
 
                 $definition->setPublic(true);
-                $container->setDefinition(InMemoryUserManager::class, $definition);
+                $container->setDefinition($userManagerServiceId, $definition);
 
                 // 如果没有显式提供 UserManagerInterface，则注册一个基于 InMemoryUser 的默认实现
                 $id = UserManagerInterface::class;
                 if (!$container->has($id) && !$container->hasDefinition($id) && !$container->hasAlias($id)) {
-                    $container->setAlias(UserManagerInterface::class, InMemoryUserManager::class);
+                    $container->setAlias(UserManagerInterface::class, $userManagerServiceId);
                 }
                 $id = UserLoaderInterface::class;
                 if (!$container->has($id) && !$container->hasDefinition($id) && !$container->hasAlias($id)) {
-                    $container->setAlias(UserLoaderInterface::class, InMemoryUserManager::class);
+                    $container->setAlias(UserLoaderInterface::class, $userManagerServiceId);
                 }
 
                 // 配置 Symfony Security UserProvider（仅当检测到 UserInterface 映射时）
                 if (null !== $userEntityClass && $container->hasExtension('security')) {
                     // 注册 TestEntityUserProvider 服务
                     $userProviderDefinition = new Definition(TestEntityUserProvider::class, [
-                        new Reference(InMemoryUserManager::class),
+                        new Reference($userManagerServiceId),
                         $userEntityClass,
                     ]);
                     $userProviderDefinition->setPublic(true);
