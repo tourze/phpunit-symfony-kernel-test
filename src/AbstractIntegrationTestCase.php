@@ -50,8 +50,7 @@ abstract class AbstractIntegrationTestCase extends KernelTestCase
      */
     final protected static function createKernel(array $options = []): KernelInterface
     {
-        // 优先级1: 从.env.test文件读取KERNEL_CLASS（应用项目场景）
-        $kernelClass = static::getKernelClassFromEnvFile();
+        $kernelClass = $_ENV['KERNEL_CLASS'] ?? static::getKernelClassFromEnvFile();
         if (null !== $kernelClass && class_exists($kernelClass)) {
             return static::createProjectKernel($kernelClass, $options);
         }
