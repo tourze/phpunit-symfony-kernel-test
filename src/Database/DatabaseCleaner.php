@@ -306,6 +306,10 @@ class DatabaseCleaner
     /**
      * 拓扑排序
      *
+     * 支持循环依赖（如自引用表）的拓扑排序。
+     * 当检测到循环依赖时，打破循环继续处理，而不是抛出异常。
+     * 由于数据库清理时会禁用外键检查，循环依赖不会影响实际清理操作。
+     *
      * @param array<string>                $nodes
      * @param array<string, array<string>> $dependencies
      *
@@ -323,7 +327,10 @@ class DatabaseCleaner
             }
 
             if (isset($visiting[$node])) {
-                throw new CircularDependencyException(sprintf('Circular dependency detected involving table "%s"', $node));
+                // 检测到循环依赖，打破循环而不是抛出异常
+                // 这通常发生在自引用表（如 parent_id 指向同表）的情况
+                // 由于清理时会禁用外键检查，循环依赖不影响实际操作
+                return;
             }
 
             $visiting[$node] = true;
