@@ -4,7 +4,7 @@ namespace Tourze\PHPUnitSymfonyKernelTest\Tests;
 
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\Persistence\Mapping\MappingException;
-use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\CoversNothing;
 use PHPUnit\Framework\Attributes\RunTestsInSeparateProcesses;
 use PHPUnit\Framework\Attributes\Test;
 use Tourze\PHPUnitSymfonyKernelTest\AbstractIntegrationTestCase;
